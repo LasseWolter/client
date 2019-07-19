@@ -20,9 +20,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"strings"
-
 	"github.com/BurntSushi/toml"
 	nvClient "github.com/katzenpost/authority/nonvoting/client"
 	vClient "github.com/katzenpost/authority/voting/client"
@@ -33,6 +30,8 @@ import (
 	"github.com/katzenpost/core/pki"
 	registration "github.com/katzenpost/registration_client"
 	"golang.org/x/net/idna"
+	"io/ioutil"
+	"strings"
 )
 
 const (
@@ -40,6 +39,9 @@ const (
 	defaultPollingInterval             = 10
 	defaultInitialMaxPKIRetrievalDelay = 10
 	defaultSessionDialTimeout          = 10
+	defaultMessageNum                  = 1
+	defaultInterval                    = 5000
+	defaultBlockSize                   = 1
 )
 
 var defaultLogging = Logging{
@@ -266,6 +268,35 @@ func (uCfg *UpstreamProxy) toProxyConfig() (*proxy.Config, error) {
 	return cfg, nil
 }
 
+// The experiment struct contains parameters that determine different parts of the experiment
+type Experiment struct {
+	// Number of messages
+	MessageNum int
+
+	// Time that the experiment should run [in minutes] - setting this value will make MessageNum useless
+	// as messages will be send as long as the message lasts
+	Duration int
+
+	// Size of message blocks - how many messages should be sent at once?
+	BlockSize int
+
+	// Interval - time interval between two message blocks [in milliseconds]
+	Interval int
+}
+
+// Applies the default values for experiment parameters if necessary
+func (exp *Experiment) applyDefaults() {
+	if exp.MessageNum <= 0 {
+		exp.MessageNum = defaultMessageNum
+	}
+	if exp.BlockSize <= 0 {
+		exp.BlockSize = defaultBlockSize
+	}
+	if exp.Interval <= 0 {
+		exp.Interval = defaultInterval
+	}
+}
+
 // Config is the top level client configuration.
 type Config struct {
 	Logging            *Logging
@@ -277,6 +308,7 @@ type Config struct {
 	Registration       *Registration
 	Panda              *Panda
 	upstreamProxy      *proxy.Config
+	Experiment         *Experiment
 }
 
 // UpstreamProxyConfig returns the configured upstream proxy, suitable for
@@ -301,6 +333,8 @@ func (c *Config) FixupAndValidate() error {
 	} else {
 		c.Debug.fixup()
 	}
+	// Apply default values for experiment if necessary
+	c.Experiment.applyDefaults()
 
 	// Validate/fixup the various sections.
 	if err := c.Logging.validate(); err != nil {
