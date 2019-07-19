@@ -144,25 +144,28 @@ func (s *Session) worker() {
 		}
 
 		if lambdaPFired {
+			s.log.Info("lambdaP fired")
 			if isConnected {
 				s.sendFromQueueOrDecoy()
 			}
 		}
 		if lambdaDFired {
-			if isConnected {
-				err := s.sendDropDecoy()
-				if err != nil {
-					s.log.Error(err.Error())
-				}
-			}
+			s.log.Info("lambdaD fired but drop decoy programmatically disabled")
+			//if isconnected {
+			//	err := s.senddropdecoy()
+			//	if err != nil {
+			//		s.log.error(err.error())
+			//	}
+			//}
 		}
 		if lambdaLFired {
-			if isConnected {
-				err := s.sendLoopDecoy()
-				if err != nil {
-					s.log.Error(err.Error())
-				}
-			}
+			s.log.Info("lambdaL fired but loop decoy programmatically disabled")
+			//if isConnected {
+			//	err := s.sendLoopDecoy()
+			//	if err != nil {
+			//		s.log.Error(err.Error())
+			//	}
+			//}
 		}
 		if qo != nil {
 			switch op := qo.(type) {
