@@ -39,9 +39,7 @@ const (
 	defaultPollingInterval             = 10
 	defaultInitialMaxPKIRetrievalDelay = 10
 	defaultSessionDialTimeout          = 10
-	defaultMessageNum                  = 1
-	defaultInterval                    = 5000
-	defaultBlockSize                   = 1
+	defaultExpDuration                 = 1
 )
 
 var defaultLogging = Logging{
@@ -270,30 +268,14 @@ func (uCfg *UpstreamProxy) toProxyConfig() (*proxy.Config, error) {
 
 // The experiment struct contains parameters that determine different parts of the experiment
 type Experiment struct {
-	// Number of messages
-	MessageNum int
-
-	// Time that the experiment should run [in minutes] - setting this value will make MessageNum useless
-	// as messages will be send as long as the message lasts
+	// Time that the experiment should run [in minutes]
 	Duration int
-
-	// Size of message blocks - how many messages should be sent at once?
-	BlockSize int
-
-	// Interval - time interval between two message blocks [in milliseconds]
-	Interval int
 }
 
 // Applies the default values for experiment parameters if necessary
 func (exp *Experiment) applyDefaults() {
-	if exp.MessageNum <= 0 {
-		exp.MessageNum = defaultMessageNum
-	}
-	if exp.BlockSize <= 0 {
-		exp.BlockSize = defaultBlockSize
-	}
-	if exp.Interval <= 0 {
-		exp.Interval = defaultInterval
+	if exp.Duration <= 0 {
+		exp.Duration = defaultExpDuration
 	}
 }
 
