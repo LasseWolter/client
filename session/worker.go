@@ -44,11 +44,23 @@ func (s *Session) setPollingInterval(doc *pki.Document) {
 	s.minclient.SetPollInterval(interval)
 }
 
-func (s *Session) setTimers(doc *pki.Document) {
-	// λP
+func (s *Session) SetLambdaP(lambdaP float64, lambdaPMax uint64) {
 	pDesc := &poisson.Descriptor{
-		Lambda: doc.LambdaP,
-		Max:    doc.LambdaPMaxDelay,
+		Lambda: lambdaP,
+		Max:    lambdaPMax,
+	}
+	if s.pTimer == nil {
+		s.log.Warning("Didn't update LambdaP because the timer didn't exist")
+	} else {
+		s.pTimer.SetPoisson(pDesc)
+	}
+}
+
+func (s *Session) setTimers(doc *pki.Document) {
+	// λP - set according to client config to control it manually
+	pDesc := &poisson.Descriptor{
+		Lambda: s.cfg.Experiment.LambdaP,
+		Max:    s.cfg.Experiment.LambdaPMaxDelay,
 	}
 	if s.pTimer == nil {
 		s.pTimer = poisson.NewTimer(pDesc)

@@ -40,6 +40,8 @@ const (
 	defaultInitialMaxPKIRetrievalDelay = 10
 	defaultSessionDialTimeout          = 10
 	defaultExpDuration                 = 1
+	defaultLambdaP                     = 0.00025 // Corresponds to mean of 4 secs
+	defaultLambdaPMaxDelay             = 30000   // 30 secs
 )
 
 var defaultLogging = Logging{
@@ -270,12 +272,26 @@ func (uCfg *UpstreamProxy) toProxyConfig() (*proxy.Config, error) {
 type Experiment struct {
 	// Time that the experiment should run [in minutes]
 	Duration int
+
+	// LambdaP is the inverse of the mean of the exponential distribution
+	// that is used to select the delay between clients sending from their egress
+	// FIFO queue or drop decoy message.
+	LambdaP float64
+
+	// LambdaPMaxDelay sets the maximum delay for LambdaP.
+	LambdaPMaxDelay uint64
 }
 
 // Applies the default values for experiment parameters if necessary
 func (exp *Experiment) applyDefaults() {
 	if exp.Duration <= 0 {
 		exp.Duration = defaultExpDuration
+	}
+	if exp.LambdaP <= 0 {
+		exp.LambdaP = defaultLambdaP
+	}
+	if exp.LambdaPMaxDelay <= 0 {
+		exp.LambdaPMaxDelay = defaultLambdaPMaxDelay
 	}
 }
 
