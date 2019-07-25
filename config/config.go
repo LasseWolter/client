@@ -42,6 +42,8 @@ const (
 	defaultExpDuration                 = 1
 	defaultLambdaP                     = 0.00025 // Corresponds to mean of 4 secs
 	defaultLambdaPMaxDelay             = 30000   // 30 secs
+	defaultQueuePollInterval           = 5
+	defaultQueueLogDir                 = "exp"
 )
 
 var defaultLogging = Logging{
@@ -280,6 +282,13 @@ type Experiment struct {
 
 	// LambdaPMaxDelay sets the maximum delay for LambdaP.
 	LambdaPMaxDelay uint64
+
+	// QueuePollInterval sets the interval which determines how often the server
+	// message queue is polled for its length [in ms]
+	QueuePollInterval int
+
+	// QueueLogDir is the folder to which all the logs concerning queue Length are written
+	QueueLogDir string
 }
 
 // Applies the default values for experiment parameters if necessary
@@ -293,6 +302,34 @@ func (exp *Experiment) applyDefaults() {
 	if exp.LambdaPMaxDelay <= 0 {
 		exp.LambdaPMaxDelay = defaultLambdaPMaxDelay
 	}
+	if exp.QueuePollInterval <= 0 {
+		exp.QueuePollInterval = defaultQueuePollInterval
+	}
+	if exp.QueueLogDir == "" {
+		exp.QueueLogDir = defaultQueueLogDir
+	}
+}
+
+// Defines a client with its name and its rateUpdates
+type Client struct {
+	// Will be the name of the statefile created for this client
+	Name string
+
+	// Updates contains all the rate updates which should be made for this client
+	Update []*Update
+}
+
+// Updates the sendRate (LambdaP) after specified time - if the specified time lies outside the
+// experiment duration the update will just not take place
+type Update struct {
+	// Time of update after start of the experiment [in min]
+	Time int
+
+	// LambdaP - as in Experiment struct
+	LambdaP float64
+
+	// LambdaPMaxDelay - as in Experiment struct
+	LambdaPMaxDelay uint64
 }
 
 // Config is the top level client configuration.
@@ -307,6 +344,7 @@ type Config struct {
 	Panda              *Panda
 	upstreamProxy      *proxy.Config
 	Experiment         *Experiment
+	Client             []*Client
 }
 
 // UpstreamProxyConfig returns the configured upstream proxy, suitable for
