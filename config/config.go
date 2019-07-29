@@ -283,6 +283,13 @@ type Experiment struct {
 	// LambdaPMaxDelay sets the maximum delay for LambdaP.
 	LambdaPMaxDelay uint64
 
+	// Mu is the inverse of the mean of the exponential distribution
+	// that is used to select the delay for each hop.
+	Mu float64
+
+	// MuMaxDelay sets the maximum delay for Mu.
+	MuMaxDelay uint64
+
 	// QueuePollInterval sets the interval which determines how often the server
 	// message queue is polled for its length [in ms]
 	QueuePollInterval int
