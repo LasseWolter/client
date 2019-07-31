@@ -42,6 +42,8 @@ const (
 	defaultExpDuration                 = 1
 	defaultLambdaP                     = 0.00025 // Corresponds to mean of 4 secs
 	defaultLambdaPMaxDelay             = 30000   // 30 secs
+	defaultMu                          = 0.00025 // Corresponds to mean of 4 secs
+	defaultMuMaxDelay                  = 200000  // 200 secs
 	defaultQueuePollInterval           = 5
 	defaultQueueLogDir                 = "exp"
 )
@@ -314,6 +316,12 @@ func (exp *Experiment) applyDefaults() {
 	}
 	if exp.QueueLogDir == "" {
 		exp.QueueLogDir = defaultQueueLogDir
+	}
+	if exp.Mu <= 0 {
+		exp.Mu = defaultMu
+	}
+	if exp.MuMaxDelay <= 0 {
+		exp.MuMaxDelay = defaultMuMaxDelay
 	}
 }
 
