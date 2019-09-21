@@ -195,13 +195,16 @@ func (s *Session) worker() {
 		}
 
 		if lambdaPFired {
-			s.pTimer.Next()
+			lP := s.pTimer.Next()
+			s.log.Debugf("[lambdaP] next value: %v", lP)
 		}
 		if lambdaDFired {
-			s.dTimer.Next()
+			lD := s.dTimer.Next()
+			s.log.Debugf("[lambdaD] next value: %v", lD)
 		}
 		if lambdaLFired {
-			s.lTimer.Next()
+			lL := s.lTimer.Next()
+			s.log.Debugf("[lambdaL] next value: %v", lL)
 		}
 
 	}
