@@ -20,9 +20,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"strings"
-
 	"github.com/BurntSushi/toml"
 	nvClient "github.com/katzenpost/authority/nonvoting/client"
 	vClient "github.com/katzenpost/authority/voting/client"
@@ -33,6 +30,8 @@ import (
 	"github.com/katzenpost/core/pki"
 	registration "github.com/katzenpost/registration_client"
 	"golang.org/x/net/idna"
+	"io/ioutil"
+	"strings"
 )
 
 const (
@@ -40,6 +39,13 @@ const (
 	defaultPollingInterval             = 10
 	defaultInitialMaxPKIRetrievalDelay = 10
 	defaultSessionDialTimeout          = 10
+	defaultExpDuration                 = 1
+	defaultLambdaP                     = 0.00025 // Corresponds to mean of 4 secs
+	defaultLambdaPMaxDelay             = 30000   // 30 secs
+	defaultMu                          = 0.00025 // Corresponds to mean of 4 secs
+	defaultMuMaxDelay                  = 200000  // 200 secs
+	defaultQueuePollInterval           = 5
+	defaultQueueLogDir                 = "exp"
 )
 
 var defaultLogging = Logging{
@@ -266,6 +272,81 @@ func (uCfg *UpstreamProxy) toProxyConfig() (*proxy.Config, error) {
 	return cfg, nil
 }
 
+// The experiment struct contains parameters that determine different parts of the experiment
+type Experiment struct {
+	// Time that the experiment should run [in minutes]
+	Duration int
+
+	// LambdaP is the inverse of the mean of the exponential distribution
+	// that is used to select the delay between clients sending from their egress
+	// FIFO queue or drop decoy message.
+	LambdaP float64
+
+	// LambdaPMaxDelay sets the maximum delay for LambdaP.
+	LambdaPMaxDelay uint64
+
+	// Mu is the inverse of the mean of the exponential distribution
+	// that is used to select the delay for each hop.
+	Mu float64
+
+	// MuMaxDelay sets the maximum delay for Mu.
+	MuMaxDelay uint64
+
+	// QueuePollInterval sets the interval which determines how often the server
+	// message queue is polled for its length [in ms]
+	QueuePollInterval int
+
+	// QueueLogDir is the folder to which all the logs concerning queue Length are written
+	QueueLogDir string
+}
+
+// Applies the default values for experiment parameters if necessary
+func (exp *Experiment) applyDefaults() {
+	if exp.Duration <= 0 {
+		exp.Duration = defaultExpDuration
+	}
+	if exp.LambdaP <= 0 {
+		exp.LambdaP = defaultLambdaP
+	}
+	if exp.LambdaPMaxDelay <= 0 {
+		exp.LambdaPMaxDelay = defaultLambdaPMaxDelay
+	}
+	if exp.QueuePollInterval <= 0 {
+		exp.QueuePollInterval = defaultQueuePollInterval
+	}
+	if exp.QueueLogDir == "" {
+		exp.QueueLogDir = defaultQueueLogDir
+	}
+	if exp.Mu <= 0 {
+		exp.Mu = defaultMu
+	}
+	if exp.MuMaxDelay <= 0 {
+		exp.MuMaxDelay = defaultMuMaxDelay
+	}
+}
+
+// Defines a client with its name and its rateUpdates
+type Client struct {
+	// Will be the name of the statefile created for this client
+	Name string
+
+	// Updates contains all the rate updates which should be made for this client
+	Update []*Update
+}
+
+// Updates the sendRate (LambdaP) after specified time - if the specified time lies outside the
+// experiment duration the update will just not take place
+type Update struct {
+	// Time of update after start of the experiment [in min]
+	Time int
+
+	// LambdaP - as in Experiment struct
+	LambdaP float64
+
+	// LambdaPMaxDelay - as in Experiment struct
+	LambdaPMaxDelay uint64
+}
+
 // Config is the top level client configuration.
 type Config struct {
 	Logging            *Logging
@@ -277,6 +358,8 @@ type Config struct {
 	Registration       *Registration
 	Panda              *Panda
 	upstreamProxy      *proxy.Config
+	Experiment         *Experiment
+	Client             []*Client
 }
 
 // UpstreamProxyConfig returns the configured upstream proxy, suitable for
@@ -301,6 +384,8 @@ func (c *Config) FixupAndValidate() error {
 	} else {
 		c.Debug.fixup()
 	}
+	// Apply default values for experiment if necessary
+	c.Experiment.applyDefaults()
 
 	// Validate/fixup the various sections.
 	if err := c.Logging.validate(); err != nil {

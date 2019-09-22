@@ -44,11 +44,23 @@ func (s *Session) setPollingInterval(doc *pki.Document) {
 	s.minclient.SetPollInterval(interval)
 }
 
-func (s *Session) setTimers(doc *pki.Document) {
-	// λP
+func (s *Session) SetLambdaP(lambdaP float64, lambdaPMax uint64) {
 	pDesc := &poisson.Descriptor{
-		Lambda: doc.LambdaP,
-		Max:    doc.LambdaPMaxDelay,
+		Lambda: lambdaP,
+		Max:    lambdaPMax,
+	}
+	if s.pTimer == nil {
+		s.log.Warning("Didn't update LambdaP because the timer didn't exist")
+	} else {
+		s.pTimer.SetPoisson(pDesc)
+	}
+}
+
+func (s *Session) setTimers(doc *pki.Document) {
+	// λP - set according to client config to control it manually
+	pDesc := &poisson.Descriptor{
+		Lambda: s.cfg.Experiment.LambdaP,
+		Max:    s.cfg.Experiment.LambdaPMaxDelay,
 	}
 	if s.pTimer == nil {
 		s.pTimer = poisson.NewTimer(pDesc)
@@ -144,25 +156,28 @@ func (s *Session) worker() {
 		}
 
 		if lambdaPFired {
+			s.log.Info("lambdaP fired")
 			if isConnected {
 				s.sendFromQueueOrDecoy()
 			}
 		}
 		if lambdaDFired {
-			if isConnected {
-				err := s.sendDropDecoy()
-				if err != nil {
-					s.log.Error(err.Error())
-				}
-			}
+			s.log.Info("lambdaD fired but drop decoy programmatically disabled")
+			//if isconnected {
+			//	err := s.senddropdecoy()
+			//	if err != nil {
+			//		s.log.error(err.error())
+			//	}
+			//}
 		}
 		if lambdaLFired {
-			if isConnected {
-				err := s.sendLoopDecoy()
-				if err != nil {
-					s.log.Error(err.Error())
-				}
-			}
+			s.log.Info("lambdaL fired but loop decoy programmatically disabled")
+			//if isConnected {
+			//	err := s.sendLoopDecoy()
+			//	if err != nil {
+			//		s.log.Error(err.Error())
+			//	}
+			//}
 		}
 		if qo != nil {
 			switch op := qo.(type) {
@@ -180,13 +195,16 @@ func (s *Session) worker() {
 		}
 
 		if lambdaPFired {
-			s.pTimer.Next()
+			lP := s.pTimer.Next()
+			s.log.Debugf("[lambdaP] next value: %v", lP)
 		}
 		if lambdaDFired {
-			s.dTimer.Next()
+			lD := s.dTimer.Next()
+			s.log.Debugf("[lambdaD] next value: %v", lD)
 		}
 		if lambdaLFired {
-			s.lTimer.Next()
+			lL := s.lTimer.Next()
+			s.log.Debugf("[lambdaL] next value: %v", lL)
 		}
 
 	}

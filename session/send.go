@@ -147,6 +147,8 @@ func (s *Session) doSend(msg *Message) error {
 	if err != nil {
 		return err
 	}
+	// Log sent messages - recipient/receiving endpoint(+loop,+spool,etc.), the provider and if it's a decoy message or not
+	s.log.Debugf("[MESSAGE] Recipient: %v  -  Provider: %v  -  isDecoy: %v\n", msg.Recipient, msg.Provider, msg.IsDecoy)
 	if msg.WithSURB {
 		s.log.Debugf("doSend setting ReplyETA to %v", eta)
 		msg.Key = key
@@ -164,7 +166,7 @@ func (s *Session) doSend(msg *Message) error {
 		}:
 		case <-time.After(3 * time.Second):
 			s.log.Debug("timeout reached when attempting to sent to waitSentChans")
-			break
+			//break
 		}
 	} else {
 		s.log.Debug("no waitSentChans map entry found for that message ID")

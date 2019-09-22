@@ -146,6 +146,11 @@ func New(ctx context.Context, fatalErrCh chan error, logBackend *log.Backend, us
 	return s, nil
 }
 
+// Allows client to send drop decoy directly
+func (s *Session) SendDropDecoy() error {
+	return s.sendDropDecoy()
+}
+
 func (s *Session) awaitFirstPKIDoc(ctx context.Context) (*pki.Document, error) {
 	for {
 		var qo workerOp

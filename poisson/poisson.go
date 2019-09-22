@@ -78,9 +78,10 @@ func (t *Fount) Channel() <-chan time.Time {
 
 // Next resets the timer to the next Poisson process value.
 // This MUST NOT be called unless the timer has fired.
-func (t *Fount) Next() {
+func (t *Fount) Next() time.Duration {
 	wakeInterval := t.nextInterval()
 	t.Timer.Reset(wakeInterval)
+	return wakeInterval
 }
 
 // NextMax resets the timer to the maximum
